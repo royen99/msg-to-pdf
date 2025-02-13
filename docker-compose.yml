@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  email-to-pdf:
+    build: .
+    container_name: email-to-pdf
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+    restart: always

@@ -7,7 +7,9 @@ This is a simple Flask-based web application that converts email files (`.eml` a
 - Converts `.eml` and `.msg` email files to PDFs.
 - Inline images and email headers are properly included in the PDF.
 - Runs in a Docker container, making it easy to deploy anywhere.
-- Temporary file storage: uploaded files and generated PDFs are automatically deleted after download.
+- In-Memory Processing: No sensitive files are saved to disk.
+
+![MSG to PDF](preview.png "MSG to PDF")
 
 ## Requirements
 

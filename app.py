@@ -3,22 +3,16 @@ import sys
 import re
 import uuid
 import base64
+from io import BytesIO, StringIO
 from flask import Flask, render_template, request, send_file, redirect, url_for, after_this_request
 from email import policy, message_from_file
 from extract_msg import Message  # For .msg files
 from weasyprint import HTML, CSS
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['OUTPUT_FOLDER'] = 'outputs'
-
-# Ensure upload and output directories exist
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
 def sanitize_html(html_content):
     """Sanitize HTML content to ensure it fits within the PDF page."""
-    # Add strict CSS rules to enforce proper scaling and wrapping
     css = """
     <style>
         body { 
@@ -64,13 +58,12 @@ def sanitize_html(html_content):
         }
     </style>
     """
-    # Insert CSS into the HTML head
     html_content = re.sub(r"<head>", f"<head>{css}", html_content, flags=re.IGNORECASE)
     return html_content
 
-def msg_to_pdf(msg_path, pdf_path):
+def msg_to_pdf(msg_file):
     """Convert .msg file to PDF."""
-    msg = Message(msg_path)
+    msg = Message(msg_file)
     
     # Extract email headers
     headers = f"""
@@ -112,23 +105,31 @@ def msg_to_pdf(msg_path, pdf_path):
         if attachment.type == "image":
             # Encode the image as base64
             image_data = base64.b64encode(attachment.data).decode("utf-8")
-            # Replace the image reference in the HTML with the base64-encoded data
-            html_content = html_content.replace(
-                f'cid:{attachment.cid}',
-                f'data:{attachment.mimetype};base64,{image_data}'
-            )
+            # Replace the cid reference in the HTML with the base64-encoded data
+            cid = attachment.cid.strip("<>")
+            if cid:
+                html_content = html_content.replace(
+                    f'cid:{cid}',
+                    f'data:{attachment.mimetype};base64,{image_data}'
+                )
     
     # Sanitize and generate PDF
     html_content = sanitize_html(html_content)
+    pdf_bytes = BytesIO()
     HTML(string=html_content).write_pdf(
-        pdf_path,
+        pdf_bytes,
         stylesheets=[CSS(string="@page { size: A3 landscape; margin: 1cm; }")]
     )
+    pdf_bytes.seek(0)
+    return pdf_bytes
 
-def eml_to_pdf(eml_path, pdf_path):
+def eml_to_pdf(eml_file):
     """Convert .eml file to PDF."""
-    with open(eml_path, "r", encoding="utf-8") as f:
-        msg = message_from_file(f, policy=policy.default)
+    # Decode the bytes into a string
+    eml_content = eml_file.read().decode("utf-8", errors="replace")
+    # Use StringIO to simulate a file-like object for message_from_file
+    eml_string_io = StringIO(eml_content)
+    msg = message_from_file(eml_string_io, policy=policy.default)
     
     # Extract email headers
     headers = f"""
@@ -191,10 +192,13 @@ def eml_to_pdf(eml_path, pdf_path):
     
     # Sanitize and generate PDF
     html_content = sanitize_html(html_content)
+    pdf_bytes = BytesIO()
     HTML(string=html_content).write_pdf(
-        pdf_path,
+        pdf_bytes,
         stylesheets=[CSS(string="@page { size: A3 landscape; margin: 1cm; }")]
     )
+    pdf_bytes.seek(0)
+    return pdf_bytes
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -208,48 +212,22 @@ def index():
             return redirect(request.url)
         
         if file and (file.filename.endswith(".eml") or file.filename.endswith(".msg")):
-            # Generate a unique filename for the uploaded file
-            unique_id = str(uuid.uuid4())
-            upload_filename = f"{unique_id}{os.path.splitext(file.filename)[1]}"
-            pdf_filename = f"{unique_id}.pdf"
-            
-            # Save the uploaded file
-            upload_path = os.path.join(app.config['UPLOAD_FOLDER'], upload_filename)
-            file.save(upload_path)
-            
-            # Convert the file to PDF
-            pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], pdf_filename)
+            # Process the file in memory
+            file_stream = BytesIO(file.read())
             if file.filename.endswith(".eml"):
-                eml_to_pdf(upload_path, pdf_path)
+                pdf_bytes = eml_to_pdf(file_stream)
             elif file.filename.endswith(".msg"):
-                msg_to_pdf(upload_path, pdf_path)
+                pdf_bytes = msg_to_pdf(file_stream)
             
-            # Redirect to the download page
-            return redirect(url_for("download", filename=pdf_filename))
+            # Return the PDF as a downloadable file
+            return send_file(
+                pdf_bytes,
+                as_attachment=True,
+                download_name=f"{uuid.uuid4()}.pdf",
+                mimetype="application/pdf"
+            )
     
     return render_template("index.html")
-
-@app.route("/download/<filename>")
-def download(filename):
-    pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
-    
-    # Delete the files after the user downloads the PDF
-    @after_this_request
-    def cleanup(response):
-        try:
-            # Delete the PDF file
-            os.remove(pdf_path)
-            # Delete the corresponding uploaded file
-            upload_filename = filename.replace(".pdf", "")
-            for ext in [".eml", ".msg"]:
-                upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{upload_filename}{ext}")
-                if os.path.exists(upload_path):
-                    os.remove(upload_path)
-        except Exception as e:
-            app.logger.error(f"Error deleting files: {e}")
-        return response
-    
-    return send_file(pdf_path, as_attachment=True)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
