@@ -1,87 +1,96 @@
-# Email to PDF Converter
+# 📧 EML/MSG to PDF Converter 🚀
 
-This is a simple Flask-based web application that converts email files (`.eml` and `.msg`) into PDFs. The app runs inside a Docker container, and it allows users to upload their email files and get a downloadable PDF version.
+A Flask-based web application to convert `.eml` and `.msg` email files to PDF, including attachments like `.docx`, `.pptx`, and `.xlsx`. Built with ❤️ using Python, Docker, and modern libraries.
 
-## Features
+---
 
-- Converts `.eml` and `.msg` email files to PDFs.
-- Inline images and email headers are properly included in the PDF.
-- Runs in a Docker container, making it easy to deploy anywhere.
-- In-Memory Processing: No sensitive files are saved to disk.
+## 🌟 Features
 
-![MSG to PDF](preview.png "MSG to PDF")
+- **Email Conversion**:
+  - Convert `.eml` and `.msg` files to PDF. ✅
+  - Preserve email headers (From, To, Subject). 📄
+  - Handle HTML and plain text email content. ✉️
 
-## Requirements
+- **Attachment Support**:
+  - Include attachments in the final PDF. 📎
+  - Convert attachments to PDF:
+    - Word documents (`.docx`) → PDF. 📑
+    - PowerPoint presentations (`.pptx`) → PDF. 📊
+    - Excel spreadsheets (`.xlsx`) → PDF. 📈
+  - Directly include PDF attachments. 📄
 
-To run this project locally, you'll need:
+- **Modern Web Interface**:
+  - Drag-and-drop file upload. 🖱️
+  - Sleek and responsive design. 🎨
+  - Dark mode support. 🌙
 
-- Python 3.x
-- Docker (for containerized setup)
+- **Dockerized**:
+  - Easy to deploy using Docker. 🐳
+  - No external dependencies required. 🚫
 
-## How to Run Locally
+---
 
-1. Clone this repository:
+## 🛠️ Technologies Used
 
+- **Python Libraries**:
+  - `Flask`: Web framework. 🌐
+  - `WeasyPrint`: HTML to PDF conversion. 🖨️
+  - `extract_msg`: Extract content from `.msg` files. 📩
+  - `pypandoc`: Convert `.docx` files to PDF. 📑
+  - `python-pptx`: Extract content from `.pptx` files. 📊
+  - `openpyxl`: Extract content from `.xlsx` files. 📈
+  - `PyPDF2`: Merge PDFs. 🔗
+
+- **System Dependencies**:
+  - `Pandoc`: Document conversion. 🔄
+  - `TeX Live`: PDF engine for `pandoc`. 📜
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Docker installed on your system. 🐳
+  - [Install Docker](https://docs.docker.com/get-docker/)
+
+### Steps to Run
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/royen99/msg-to-pdf.git
+   cd msg-to-pdf
+
+2. **Build the Docker Image**:
     ```bash
-    git clone https://github.com/royen99/msg-to-pdf.git
-    cd msg-to-pdf
-    ```
+    docker build -t eml-to-pdf-converter .
 
-2. Build and run the Docker container:
-
+3. **Run the Docker Container**:
     ```bash
-    docker-compose up --build
-    ```
+    docker run -p 5000:5000 eml-to-pdf-converter
 
-    This will start the application on `http://localhost:5000`.
+4. **Access the Web Interface**:
+Open your browser and navigate to: `http://localhost:5000`.
 
-## How to Use
+5. **Upload and Convert**:
+    * Drag and drop your .eml or .msg file.
+    * Download the converted PDF with attachments. 📥
 
-1. Open the app in your browser at `http://localhost:5000`.
-2. Upload a `.eml` or `.msg` file using the upload form.
-3. The app will process the file and convert it to a PDF.
-4. Download the PDF once it's ready.
+## 📂 Project Structure
+    eml-to-pdf-converter/
+    ├── app.py                # Flask application
+    ├── Dockerfile            # Docker configuration
+    ├── README.md             # Project documentation
+    ├── requirements.txt      # Python dependencies
+    └── templates/
+        └── index.html        # Web interface
 
-## Docker Setup
+## 🤝 Contributing
+Contributions are welcome! 🎉 If you have any ideas, suggestions, or bug reports, please open an issue or submit a pull request.
+- Fork the repository. 🍴
+- Create a new branch. 🌿
+- Make your changes. ✏️
+- Submit a pull request. 🚀
 
-The app is designed to be easily deployable using Docker. The `Dockerfile` and `docker-compose.yml` files are included in the repo for easy setup.
-
-To start the app in Docker:
-
-1. Build the Docker image:
-
-    ```bash
-    docker-compose build
-    ```
-
-2. Run the container:
-
-    ```bash
-    docker-compose up
-    ```
-
-The app will be accessible at `http://localhost:5000`.
-
-## Files Handled
-
-- `.eml` files: Standard email format used by many email clients (like Outlook).
-- `.msg` files: Microsoft Outlook message format.
-  
-Both file types are processed and converted into well-formatted PDFs, including the email's content, headers, and any inline images.
-
-## Technologies Used
-
-- **Flask**: A lightweight Python web framework used for serving the app.
-- **WeasyPrint**: A library for converting HTML to PDF, used for rendering email content.
-- **extract-msg**: A Python library for reading `.msg` files (Microsoft Outlook emails).
-- **Docker**: Used to containerize the app for easy deployment.
-
-## License
-
-This project is open-source and available under the Apache 2.0 License.
-
-## Acknowledgments
-
-- **Flask** for making web development simple.
-- **WeasyPrint** for reliable HTML to PDF conversion.
-- **extract-msg** for reading `.msg` files.
+## 📜 License
+This project is licensed under the Apache 2.0 License. See the LICENSE file for details.
