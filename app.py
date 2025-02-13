@@ -178,7 +178,8 @@ def msg_to_pdf(msg_file):
     if "<body>" in html_content:
         html_content = html_content.replace("<body>", f"<body>{headers}")
     
-    # Handle embedded images
+    # Handle embedded images and attachments
+    attachments = []
     for attachment in msg.attachments:
         if attachment.type == "image":
             # Encode the image as base64
@@ -190,6 +191,17 @@ def msg_to_pdf(msg_file):
                     f'cid:{cid}',
                     f'data:{attachment.mimetype};base64,{image_data}'
                 )
+        else:
+            # Extract non-image attachments
+            attachment_name = attachment.longFilename or attachment.shortFilename  # Use longFilename or shortFilename
+            attachment_data = attachment.data
+            attachment_type = attachment.mimetype
+            attachments.append({
+                "name": attachment_name,
+                "data": attachment_data,
+                "type": attachment_type
+            })
+            print(f"Found attachment: {attachment_name} (MIME type: {attachment_type})")
     
     # Sanitize and generate PDF
     html_content = sanitize_html(html_content)
@@ -199,7 +211,7 @@ def msg_to_pdf(msg_file):
         stylesheets=[CSS(string="@page { size: A3 landscape; margin: 1cm; }")]
     )
     pdf_bytes.seek(0)
-    return pdf_bytes, msg.attachments
+    return pdf_bytes, attachments
 
 def eml_to_pdf(eml_file):
     """Convert .eml file to PDF."""
@@ -326,7 +338,7 @@ def index():
                             merger.append(BytesIO(pdf_data))
                         else:
                             print(f"Skipping unsupported attachment: {attachment['name']}")
-                   
+                
                 # Save the merged PDF to a BytesIO object
                 merged_pdf = BytesIO()
                 merger.write(merged_pdf)

@@ -21,6 +21,10 @@ WORKDIR /app
 # Install Python dependencies
 RUN pip install flask weasyprint extract_msg PyPDF2 pypandoc pandas python-pptx openpyxl
 
+# Copy the application files into the container
+COPY app.py /app/app.py
+COPY templates /app/templates
+
 # Expose the Flask app port
 EXPOSE 5000
 

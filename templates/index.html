@@ -153,12 +153,84 @@
         .theme-toggle:hover {
             background: var(--btn-hover-bg);
         }
+
+        .info-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: var(--btn-bg);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s;
+        }
+
+        .info-button:hover {
+            background: var(--btn-hover-bg);
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border-radius: 15px;
+        }
+
+        .modal-header {
+            background: var(--header-bg);
+            color: var(--header-text);
+            border-radius: 15px 15px 0 0;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-body ul {
+            padding-left: 20px;
+        }
+
+        .modal-body ul li {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <!-- Dark Mode Toggle -->
     <button class="theme-toggle" id="theme-toggle">🌙</button>
 
+    <!-- Info Button -->
+    <button class="info-button" id="info-button">ℹ️</button>
+
+    <!-- Info Modal -->
+    <div class="modal fade" id="info-modal" tabindex="-1" aria-labelledby="info-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="info-modal-label">About This Application</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>This application allows you to convert <strong>.eml</strong> and <strong>.msg</strong> email files into <strong>PDF</strong> format. Here are some key features:</p>
+                    <ul>
+                        <li><strong>Privacy First:</strong> Neither the uploaded file nor the generated PDF is stored on disk. All processing happens in memory, ensuring your sensitive information remains secure.</li>
+                        <li><strong>Attachment Support:</strong> Attachments such as Word (<code>.docx</code>), Excel (<code>.xlsx</code>), and PDF files are also converted and included in the final PDF.</li>
+                        <li><strong>Drag-and-Drop:</strong> Easily upload files by dragging and dropping them into the designated area.</li>
+                        <li><strong>Dark Mode:</strong> Toggle between light and dark themes for a comfortable viewing experience.</li>
+                    </ul>
+                    <p>If you have any questions or encounter issues, feel free to reach out!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Card -->
     <div class="card">
         <div class="card-header">
             <h1>EML/MSG to PDF Converter</h1>
@@ -208,6 +280,14 @@
             const isDark = body.getAttribute('data-theme') === 'dark';
             body.setAttribute('data-theme', isDark ? 'light' : 'dark');
             themeToggle.textContent = isDark ? '🌙' : '☀️';
+        });
+
+        // Info Modal
+        const infoButton = document.getElementById('info-button');
+        const infoModal = new bootstrap.Modal(document.getElementById('info-modal'));
+
+        infoButton.addEventListener('click', () => {
+            infoModal.show();
         });
     </script>
 </body>
