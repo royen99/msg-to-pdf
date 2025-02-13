@@ -4,10 +4,15 @@ import re
 import uuid
 import base64
 from io import BytesIO, StringIO
-from flask import Flask, render_template, request, send_file, redirect, url_for, after_this_request
+from flask import Flask, render_template, request, send_file, redirect, url_for
 from email import policy, message_from_file
 from extract_msg import Message  # For .msg files
 from weasyprint import HTML, CSS
+from PyPDF2 import PdfMerger
+import pypandoc  # For converting attachments to PDF
+import pandas as pd
+from pptx import Presentation  # For PowerPoint files
+from openpyxl import load_workbook  # For Excel files
 
 app = Flask(__name__)
 
@@ -60,6 +65,79 @@ def sanitize_html(html_content):
     """
     html_content = re.sub(r"<head>", f"<head>{css}", html_content, flags=re.IGNORECASE)
     return html_content
+
+def convert_attachment_to_pdf(attachment_data, attachment_name):
+    """Convert an attachment to PDF using pypandoc, pandas, or python-pptx."""
+    try:
+        # Save the attachment to a temporary file
+        temp_input = f"/tmp/{uuid.uuid4()}_{attachment_name}"
+        temp_output = f"/tmp/{uuid.uuid4()}.pdf"
+        
+        with open(temp_input, "wb") as f:
+            f.write(attachment_data)
+        
+        # Handle Excel files
+        if attachment_name.endswith(".xlsx"):
+            # Read the Excel file into a DataFrame
+            wb = load_workbook(temp_input)
+            html_content = "<html><body>"
+            for sheet_name in wb.sheetnames:
+                sheet = wb[sheet_name]
+                html_content += f"<h2>{sheet_name}</h2><table>"
+                for row in sheet.iter_rows(values_only=True):
+                    html_content += "<tr>"
+                    for cell in row:
+                        html_content += f"<td>{cell}</td>"
+                    html_content += "</tr>"
+                html_content += "</table>"
+            html_content += "</body></html>"
+            
+            # Convert the HTML to PDF using WeasyPrint
+            HTML(string=html_content).write_pdf(temp_output)
+        
+        # Handle PowerPoint files
+        elif attachment_name.endswith(".pptx"):
+            # Read the PowerPoint file
+            prs = Presentation(temp_input)
+            html_content = "<html><body>"
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        html_content += f"<p>{shape.text}</p>"
+            html_content += "</body></html>"
+            
+            # Convert the HTML to PDF using WeasyPrint
+            HTML(string=html_content).write_pdf(temp_output)
+        
+        # Handle Word files
+        elif attachment_name.endswith(".docx"):
+            # Use pypandoc for Word files
+            pypandoc.convert_file(
+                temp_input,
+                "pdf",
+                outputfile=temp_output,
+                format="docx",
+                extra_args=["--pdf-engine=pdflatex"]  # Specify the PDF engine
+            )
+        else:
+            # Skip unsupported formats
+            print(f"Unsupported file format: {attachment_name}")
+            return None
+        
+        # Read the converted PDF
+        with open(temp_output, "rb") as f:
+            pdf_data = f.read()
+        
+        return pdf_data
+    except Exception as e:
+        print(f"Error converting {attachment_name} to PDF: {e}")
+        return None
+    finally:
+        # Clean up temporary files
+        if os.path.exists(temp_input):
+            os.remove(temp_input)
+        if os.path.exists(temp_output):
+            os.remove(temp_output)
 
 def msg_to_pdf(msg_file):
     """Convert .msg file to PDF."""
@@ -121,7 +199,7 @@ def msg_to_pdf(msg_file):
         stylesheets=[CSS(string="@page { size: A3 landscape; margin: 1cm; }")]
     )
     pdf_bytes.seek(0)
-    return pdf_bytes
+    return pdf_bytes, msg.attachments
 
 def eml_to_pdf(eml_file):
     """Convert .eml file to PDF."""
@@ -174,7 +252,8 @@ def eml_to_pdf(eml_file):
     if "<body>" in html_content:
         html_content = html_content.replace("<body>", f"<body>{headers}")
     
-    # Handle inline images
+    # Handle inline images and attachments
+    attachments = []
     if msg.is_multipart():
         for part in msg.walk():
             if part.get_content_maintype() == "image":
@@ -189,6 +268,17 @@ def eml_to_pdf(eml_file):
                         f'cid:{cid}',
                         f'data:{part.get_content_type()};base64,{image_base64}'
                     )
+            elif part.get_filename():
+                # Extract attachments
+                attachment_name = part.get_filename()
+                attachment_data = part.get_payload(decode=True)
+                attachment_type = part.get_content_type()
+                attachments.append({
+                    "name": attachment_name,
+                    "data": attachment_data,
+                    "type": attachment_type
+                })
+                print(f"Found attachment: {attachment_name} (MIME type: {attachment_type})")
     
     # Sanitize and generate PDF
     html_content = sanitize_html(html_content)
@@ -198,7 +288,7 @@ def eml_to_pdf(eml_file):
         stylesheets=[CSS(string="@page { size: A3 landscape; margin: 1cm; }")]
     )
     pdf_bytes.seek(0)
-    return pdf_bytes
+    return pdf_bytes, attachments
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -215,9 +305,33 @@ def index():
             # Process the file in memory
             file_stream = BytesIO(file.read())
             if file.filename.endswith(".eml"):
-                pdf_bytes = eml_to_pdf(file_stream)
+                pdf_bytes, attachments = eml_to_pdf(file_stream)
             elif file.filename.endswith(".msg"):
-                pdf_bytes = msg_to_pdf(file_stream)
+                pdf_bytes, attachments = msg_to_pdf(file_stream)
+            
+            # Merge attachments into the PDF
+            if attachments:
+                merger = PdfMerger()
+                merger.append(pdf_bytes)
+                
+                for attachment in attachments:
+                    if attachment["type"] == "application/pdf":
+                        # Directly append PDF attachments
+                        merger.append(BytesIO(attachment["data"]))
+                    else:
+                        # Convert non-PDF attachments to PDF
+                        print(f"Converting: {attachment['name']}")
+                        pdf_data = convert_attachment_to_pdf(attachment["data"], attachment["name"])
+                        if pdf_data:
+                            merger.append(BytesIO(pdf_data))
+                        else:
+                            print(f"Skipping unsupported attachment: {attachment['name']}")
+                   
+                # Save the merged PDF to a BytesIO object
+                merged_pdf = BytesIO()
+                merger.write(merged_pdf)
+                merged_pdf.seek(0)
+                pdf_bytes = merged_pdf
             
             # Return the PDF as a downloadable file
             return send_file(
