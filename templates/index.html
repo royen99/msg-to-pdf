@@ -8,81 +8,170 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <style>
+        :root {
+            --bg-color: linear-gradient(135deg, #f5f7fa, #ffecd2);
+            --card-bg: white;
+            --text-color: #333;
+            --header-bg: linear-gradient(135deg, #ff7e5f, #feb47b);
+            --header-text: white;
+            --input-border: #ddd;
+            --input-focus-border: #ff7e5f;
+            --input-focus-shadow: rgba(255, 126, 95, 0.5);
+            --btn-bg: linear-gradient(135deg, #ff7e5f, #feb47b);
+            --btn-hover-bg: linear-gradient(135deg, #feb47b, #ff7e5f);
+            --upload-icon-color: #ff7e5f;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: linear-gradient(135deg, #1e1e2f, #2a2a40);
+            --card-bg: #2a2a40;
+            --text-color: #f5f7fa;
+            --header-bg: linear-gradient(135deg, #ff6f61, #ff9a44);
+            --header-text: #f5f7fa;
+            --input-border: #444;
+            --input-focus-border: #ff6f61;
+            --input-focus-shadow: rgba(255, 111, 97, 0.5);
+            --btn-bg: linear-gradient(135deg, #ff6f61, #ff9a44);
+            --btn-hover-bg: linear-gradient(135deg, #ff9a44, #ff6f61);
+            --upload-icon-color: #ff6f61;
+        }
+
         body {
-            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            background: var(--bg-color);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            color: var(--text-color);
+            transition: background 0.3s, color 0.3s;
         }
+
         .card {
             border: none;
             border-radius: 15px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            background: white;
+            background: var(--card-bg);
             max-width: 500px;
             width: 100%;
+            transition: background 0.3s;
         }
+
         .card-header {
-            background: linear-gradient(135deg, #6a11cb, #2575fc);
-            color: white;
+            background: var(--header-bg);
+            color: var(--header-text);
             border-radius: 15px 15px 0 0;
             text-align: center;
             padding: 20px;
+            transition: background 0.3s, color 0.3s;
         }
+
         .card-header h1 {
             font-size: 1.8rem;
             margin: 0;
         }
+
         .card-body {
             padding: 30px;
         }
+
         .form-control {
             border-radius: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border);
             padding: 10px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            transition: border-color 0.3s, box-shadow 0.3s, background 0.3s, color 0.3s;
         }
+
         .form-control:focus {
-            border-color: #6a11cb;
-            box-shadow: 0 0 5px rgba(106, 17, 203, 0.5);
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 5px var(--input-focus-shadow);
         }
+
         .btn-primary {
-            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            background: var(--btn-bg);
             border: none;
             border-radius: 10px;
             padding: 10px 20px;
             width: 100%;
             font-size: 1rem;
+            transition: background 0.3s;
         }
+
         .btn-primary:hover {
-            background: linear-gradient(135deg, #2575fc, #6a11cb);
+            background: var(--btn-hover-bg);
         }
+
         .upload-label {
             display: block;
             text-align: center;
             margin-bottom: 20px;
             font-size: 1.1rem;
-            color: #555;
+            color: var(--text-color);
+            transition: color 0.3s;
         }
+
         .upload-icon {
             font-size: 2rem;
-            color: #6a11cb;
+            color: var(--upload-icon-color);
             margin-bottom: 10px;
+            transition: color 0.3s;
+        }
+
+        .drag-drop-area {
+            border: 2px dashed var(--input-border);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s, background 0.3s;
+        }
+
+        .drag-drop-area.dragover {
+            border-color: var(--input-focus-border);
+            background: rgba(255, 111, 97, 0.1);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--btn-bg);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--btn-hover-bg);
         }
     </style>
 </head>
 <body>
+    <!-- Dark Mode Toggle -->
+    <button class="theme-toggle" id="theme-toggle">🌙</button>
+
     <div class="card">
         <div class="card-header">
             <h1>EML/MSG to PDF Converter</h1>
         </div>
         <div class="card-body">
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" id="upload-form">
                 <div class="upload-label">
                     <span class="upload-icon">📤</span>
-                    <span>Upload your .eml or .msg file</span>
+                    <span>Drag & drop your .eml or .msg file here</span>
                 </div>
-                <input type="file" name="file" class="form-control" accept=".eml,.msg" required>
+                <div class="drag-drop-area" id="drag-drop-area">
+                    <input type="file" name="file" class="form-control" id="file-input" accept=".eml,.msg" required>
+                </div>
                 <button type="submit" class="btn btn-primary mt-3">Convert to PDF</button>
             </form>
         </div>
@@ -90,5 +179,36 @@
 
     <!-- Bootstrap 5 JS (optional, for advanced features) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script>
+        // Drag-and-Drop Functionality
+        const dragDropArea = document.getElementById('drag-drop-area');
+        const fileInput = document.getElementById('file-input');
+
+        dragDropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.add('dragover');
+        });
+
+        dragDropArea.addEventListener('dragleave', () => {
+            dragDropArea.classList.remove('dragover');
+        });
+
+        dragDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+        });
+
+        // Dark Mode Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const body = document.body;
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            themeToggle.textContent = isDark ? '🌙' : '☀️';
+        });
+    </script>
 </body>
 </html>
